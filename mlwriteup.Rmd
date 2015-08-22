@@ -1,0 +1,76 @@
+Practical Machine Learning: Assignment Writeup
+========================================================
+##Executive summary
+
+ In this project, the goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+ 
+The goal of your project is to predict the manner in which they did the exercise
+
+#Data Preparation
+```{r,echo=TRUE}
+#Data loading
+ppmlTrain=read.csv("pml-training.csv", header=T, na.strings=c("NA", "#DIV/0!"))
+ppmlTest=read.csv("pml-testing.csv", header=T, na.string=c("NA", "#DIV/0!"))
+```
+
+-all variables with at least one "NA" were excluded from the analysis. 
+-Variables related to time and user information were excluded 
+-Same variables were mainteined in the test data set to be used for predicting the 20 test cases
+
+```{r,echo=TRUE}
+## NA exclusion for all the variables
+NONAppmlTrain=ppmlTrain[, apply(ppmlTrain, 2, function(x) !any(is.na(x)))] 
+```
+
+```{r,echo=TRUE}
+## variables with user information, time and undefined
+cleanedppmlTrain=NONAppmlTrain[,-c(1:8)]
+```
+```{r,echo=TRUE}
+#20 test cases
+cleanedppmltest=ppmlTest[,names(cleanedppmlTrain[,-52])]
+```
+
+
+#Partition and predicting
+
+```{r,echo=TRUE}
+library(randomForest)
+library(caret)
+Train=createDataPartition(y=cleanedppmlTrain$classe, p=0.75,list=F)
+training=cleanedppmlTrain[Train,] 
+test=cleanedppmlTrain[-Train,] 
+```
+#Conclusion
+
+Random forest trees were generated for the training dataset using cross-validation. The algorithm was examnined with the partitioned test set to determine the accuracy and estimated error of prediction. 
+
+```{r,echo=TRUE}
+library(e1071)
+library(randomForest)
+library(caret)
+
+fc=trainControl(method="cv", number=5, allowParallel=T, verbose=T)
+rffit=train(classe~.,data=training, method="rf", trControl=fc, verbose=F)
+```
+
+
+```{r,echo=TRUE}
+predictrf=predict(rffit, newdata=test)
+confusionMatrix(predictrf, test$classe)
+```
+
+```{r,echo=TRUE}
+predof20=predict(rffit, newdata=cleanedppmltest)
+# prediction of the 20 cases
+predof20
+
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(predof20)
+```
